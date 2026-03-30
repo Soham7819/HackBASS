@@ -1,9 +1,8 @@
-iimport React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment, Grid, ContactShadows, Html } from '@react-three/drei';
-// UPDATED: Imported IndianRupee instead of DollarSign
 import { Layers, Activity, FileText, Info, Home, Box, Database, MousePointerClick, Type, Map, Monitor, Calculator, IndianRupee } from 'lucide-react';
 
 // ==========================================
@@ -113,7 +112,7 @@ const CostEstimator = ({ geometry, materialsDb }) => {
 // INTERACTIVE 2D COMPONENT (HIGH FIDELITY)
 // ==========================================
 const FloorPlan2D = ({ geometry, activeWall, setActiveWall }) => {
-  const { walls, slab, windows = [], stairs = [] } = geometry;
+  const { walls, slab, windows = [] } = geometry;
   
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -156,31 +155,7 @@ const FloorPlan2D = ({ geometry, activeWall, setActiveWall }) => {
 
       <svg viewBox={viewBox} style={{ width: '100%', height: '100%', filter: 'drop-shadow(0px 10px 15px rgba(0,0,0,0.5))', cursor: isDragging ? 'grabbing' : 'grab' }}>
         
-        {/* SVG Defs for Up-Arrow on Stairs */}
-        <defs>
-          <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="#fb923c" />
-          </marker>
-        </defs>
-
         <rect x={-slab.width / 2} y={-slab.depth / 2} width={slab.width} height={slab.depth} fill="#1e293b" stroke="#334155" strokeWidth="0.1" />
-        
-        {/* Render High-Fidelity 2D Stairs */}
-        {stairs.map((stair) => {
-          const numSteps = Math.max(5, stair.steps || 5);
-          return (
-            <g key={stair.id} transform={`translate(${stair.position.x}, ${stair.position.z}) rotate(${-(stair.rotation * 180) / Math.PI})`}>
-              <rect x={-stair.width / 2} y={-stair.depth / 2} width={stair.width} height={stair.depth} fill="#0f172a" stroke="#fb923c" strokeWidth="0.05" />
-              {/* Draw individual stair step lines */}
-              {Array.from({ length: numSteps }).map((_, i) => {
-                const yPos = -stair.depth / 2 + (i * stair.depth) / numSteps;
-                return <line key={i} x1={-stair.width / 2} y1={yPos} x2={stair.width / 2} y2={yPos} stroke="#fb923c" strokeWidth="0.02" />;
-              })}
-              {/* Draw directional 'UP' arrow */}
-              <line x1={0} y1={-stair.depth / 2 + 0.2} x2={0} y2={stair.depth / 2 - 0.2} stroke="#fb923c" strokeWidth="0.04" markerEnd="url(#arrow)" />
-            </g>
-          );
-        })}
 
         {/* Render Walls */}
         {walls.map((wall) => {
@@ -216,7 +191,7 @@ const FloorPlan2D = ({ geometry, activeWall, setActiveWall }) => {
 // ==========================================
 const FloorPlan3D = ({ geometry, activeWall, setActiveWall }) => {
   const [hoveredWall, setHoveredWall] = useState(null);
-  const { walls, slab, windows = [], stairs = [] } = geometry;
+  const { walls, slab, windows = [] } = geometry;
 
   return (
     <group>
@@ -273,34 +248,6 @@ const FloorPlan3D = ({ geometry, activeWall, setActiveWall }) => {
           </mesh>
         </group>
       ))}
-
-      {/* High-Fidelity 3D Stairs */}
-      {stairs.map((stair) => {
-        const numSteps = Math.max(5, stair.steps || 5);
-        const stepHeight = 3 / numSteps;
-        const stepDepth = stair.depth / numSteps;
-
-        return (
-          <group key={stair.id} position={[stair.position.x, 0, stair.position.z]} rotation={[0, stair.rotation, 0]}>
-            {Array.from({ length: numSteps }).map((_, i) => {
-              const y = i * stepHeight;
-              const z = (i * stepDepth) - (stair.depth/2) + (stepDepth/2);
-              return (
-                <group key={i}>
-                  <mesh position={[0, y + stepHeight/2, z - stepDepth/2 + 0.02]} castShadow>
-                    <boxGeometry args={[stair.width, stepHeight, 0.04]} />
-                    <meshStandardMaterial color="#475569" />
-                  </mesh>
-                  <mesh position={[0, y + stepHeight, z]} castShadow>
-                    <boxGeometry args={[stair.width + 0.04, 0.05, stepDepth + 0.04]} />
-                    <meshStandardMaterial color="#fb923c" />
-                  </mesh>
-                </group>
-              )
-            })}
-          </group>
-        );
-      })}
 
       <ContactShadows resolution={1024} scale={50} blur={2} opacity={0.5} far={10} color="#000000" />
     </group>
@@ -461,7 +408,6 @@ const DatabasePage = () => (
         <thead style={{ backgroundColor: '#0f172a', color: '#38bdf8' }}>
           <tr>
             <th style={{ padding: '15px', borderBottom: '1px solid #334155' }}>Material</th>
-            {/* UPDATED: Changed from USD to INR */}
             <th style={{ padding: '15px', borderBottom: '1px solid #334155' }}>Est. Cost (INR/m²)</th>
             <th style={{ padding: '15px', borderBottom: '1px solid #334155' }}>Strength</th>
             <th style={{ padding: '15px', borderBottom: '1px solid #334155' }}>Durability</th>
@@ -469,15 +415,16 @@ const DatabasePage = () => (
           </tr>
         </thead>
         <tbody>
-          {/* UPDATED: Cost array values transformed to Indian Rupees (INR) */}
           {[
-            { m: "AAC Blocks", p: "₹4,250", s: "Medium (2)", d: "High (3)", u: "Partition walls" },
-            { m: "Red Brick", p: "₹5,200", s: "High (3)", d: "Medium (2)", u: "Load-bearing walls" },
-            { m: "RCC", p: "₹11,350", s: "Very High (4)", d: "Very High (4)", u: "Columns, slabs" },
-            { m: "Steel Frame", p: "₹14,190", s: "Very High (4)", d: "Very High (4)", u: "Long spans (>5m)" },
-            { m: "Hollow Concrete", p: "₹3,780", s: "Medium (2)", d: "Medium (2)", u: "Non-structural" },
-            { m: "Fly Ash Brick", p: "₹3,310", s: "Med-High (2.5)", d: "High (3)", u: "General walling" },
-            { m: "Precast Panel", p: "₹8,510", s: "High (3)", d: "Very High (4)", u: "Structural, slabs" }
+            { m: "AAC Blocks", p: "₹1,100", s: "Medium (2)", d: "High (3)", u: "Partition walls" },
+            { m: "Fly Ash Brick", p: "₹1,350", s: "Med-High (2.5)", d: "High (3)", u: "Partition walls" },
+            { m: "Hollow Concrete", p: "₹1,250", s: "Medium (2)", d: "Medium (2)", u: "Partition walls" },
+            { m: "Gypsum Drywall", p: "₹850", s: "Low (1)", d: "Medium (2)", u: "Partition walls" },
+            { m: "Toughened Glass", p: "₹3,200", s: "Medium (2)", d: "High (3)", u: "Partition walls" },
+            { m: "Red Clay Brick", p: "₹1,450", s: "High (3)", d: "Medium (2)", u: "Load-bearing walls" },
+            { m: "Structural Steel", p: "₹5,500", s: "Very High (5)", d: "High (4)", u: "Long spans (>5m)" },
+            { m: "RCC", p: "₹3,800", s: "Very High (5)", d: "Very High (5)", u: "Columns, slabs" },
+            { m: "Precast Panel", p: "₹2,800", s: "High (4)", d: "High (4)", u: "Structural, slabs" }
           ].map((row, i) => (
             <tr key={i} style={{ backgroundColor: i % 2 === 0 ? '#1e293b' : '#0f172a' }}>
               <td style={{ padding: '15px', borderBottom: '1px solid #334155', fontWeight: 'bold' }}>{row.m}</td>
@@ -506,7 +453,7 @@ const AboutPage = () => (
         { step: "01", title: "Floor Plan Parsing", desc: "OpenCV extracts orthogonal geometry. Groq AI acts as a multimodal OCR agent to extract room names." },
         { step: "02", title: "Geometry Reconstruction", desc: "Shapely bounds classification determines Load-Bearing (outer perimeter) vs Partition (internal)." },
         { step: "03", title: "3D Model Generation", desc: "React Three Fiber dynamically extrudes lines to 3m heights and generates the slab." },
-        { step: "04", title: "Tradeoff Logic & Cost Analysis", desc: "A deterministic algorithm ranks materials via weighted physics formulas, while a React module computes real-time cost estimations based on geometric surface area." },
+        { step: "04", title: "Tradeoff Logic & Cost Analysis", desc: "A deterministic algorithm ranks materials via weighted physics formulas, while a React module computes real-time INR cost estimations based on geometric surface area." },
         { step: "05", title: "Explainability", desc: "Groq AI translates the mathematical outputs into plain-language engineering justifications." }
       ].map(s => (
         <div key={s.step} style={{ display: 'flex', gap: '20px', padding: '20px', backgroundColor: '#1e293b', borderRadius: '8px', border: '1px solid #334155' }}>
