@@ -24,15 +24,17 @@ app.add_middleware(
 
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
-# UPDATED: 'unit_price' converted from USD to INR (estimated per square meter)
+# Realistic Indian Construction Rates (Estimated ₹ per Square Meter)
 MATERIAL_DB = [
-    {"name": "AAC Blocks", "cost": 1, "unit_price": 4250, "strength": 2, "durability": 3, "allowed": ["partition"]},
-    {"name": "Red Brick", "cost": 2, "unit_price": 5200, "strength": 3, "durability": 2, "allowed": ["load_bearing"]},
-    {"name": "RCC", "cost": 3, "unit_price": 11350, "strength": 4, "durability": 4, "allowed": ["load_bearing", "slab", "column"]},
-    {"name": "Steel Frame", "cost": 3, "unit_price": 14190, "strength": 4, "durability": 4, "allowed": ["load_bearing", "window_frames"]}, 
-    {"name": "Hollow Concrete Block", "cost": 1.5, "unit_price": 3780, "strength": 2, "durability": 2, "allowed": ["partition"]},
-    {"name": "Fly Ash Brick", "cost": 1, "unit_price": 3310, "strength": 2.5, "durability": 3, "allowed": ["partition", "load_bearing"]},
-    {"name": "Precast Concrete Panel", "cost": 2.5, "unit_price": 8510, "strength": 3, "durability": 4, "allowed": ["load_bearing", "slab"]}
+    {"name": "AAC Blocks (200mm)", "cost": 1.5, "unit_price": 1100, "strength": 2, "durability": 3, "allowed": ["partition", "load_bearing"]},
+    {"name": "Fly Ash Brick (230mm)", "cost": 1.5, "unit_price": 1350, "strength": 2.5, "durability": 3, "allowed": ["partition", "load_bearing"]},
+    {"name": "Hollow Concrete Block", "cost": 1, "unit_price": 1250, "strength": 2, "durability": 2, "allowed": ["partition"]},
+    {"name": "Gypsum Drywall", "cost": 1, "unit_price": 850, "strength": 1, "durability": 2, "allowed": ["partition"]},
+    {"name": "Toughened Glass", "cost": 3, "unit_price": 3200, "strength": 2, "durability": 3, "allowed": ["partition"]},
+    {"name": "Red Clay Brick", "cost": 2, "unit_price": 1450, "strength": 3, "durability": 4, "allowed": ["load_bearing"]},
+    {"name": "Structural Steel", "cost": 4, "unit_price": 5500, "strength": 5, "durability": 4, "allowed": ["load_bearing"]},
+    {"name": "RCC", "cost": 3.5, "unit_price": 3800, "strength": 5, "durability": 5, "allowed": ["load_bearing", "slab"]},
+    {"name": "Precast Panel", "cost": 2.5, "unit_price": 2800, "strength": 4, "durability": 4, "allowed": ["load_bearing", "slab"]}
 ]
 
 def extract_text_from_image(image_bytes: bytes):
@@ -153,7 +155,7 @@ def calculate_tradeoffs(element_type: str, max_span: float):
     for mat in MATERIAL_DB:
         if element_type in mat["allowed"]:
             score = (w_cost * (5 - mat["cost"])) + (w_strength * mat["strength"]) + (w_durability * mat["durability"])
-            if element_type == "load_bearing" and max_span > 5.0 and mat["name"] == "Steel Frame":
+            if element_type == "load_bearing" and max_span > 5.0 and mat["name"] == "Structural Steel":
                 score += 1.0 
             results.append({"material": mat["name"], "score": round(score, 2)})
             
