@@ -1,9 +1,113 @@
-import React, { useState } from 'react';
+iimport React, { useState, useMemo } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment, Grid, ContactShadows, Html } from '@react-three/drei';
-import { Layers, Activity, FileText, Info, Home, Box, Database, MousePointerClick, Type, Map, Monitor } from 'lucide-react';
+// UPDATED: Imported IndianRupee instead of DollarSign
+import { Layers, Activity, FileText, Info, Home, Box, Database, MousePointerClick, Type, Map, Monitor, Calculator, IndianRupee } from 'lucide-react';
+
+// ==========================================
+// COST CALCULATOR COMPONENT
+// ==========================================
+const CostEstimator = ({ geometry, materialsDb }) => {
+  const { walls, slab } = geometry;
+  const WALL_HEIGHT = 3.0; // Standard 3m wall height
+
+  // Calculate total surface areas
+  const { lbArea, partArea, slabArea } = useMemo(() => {
+    const loadBearingLength = walls.filter(w => w.type === 'load_bearing').reduce((sum, w) => sum + w.length, 0);
+    const partitionLength = walls.filter(w => w.type === 'partition').reduce((sum, w) => sum + w.length, 0);
+    return {
+      lbArea: loadBearingLength * WALL_HEIGHT,
+      partArea: partitionLength * WALL_HEIGHT,
+      slabArea: slab.width * slab.depth
+    };
+  }, [walls, slab]);
+
+  // Filter materials by allowed use
+  const lbMaterials = materialsDb.filter(m => m.allowed.includes('load_bearing'));
+  const partMaterials = materialsDb.filter(m => m.allowed.includes('partition'));
+  const slabMaterials = materialsDb.filter(m => m.allowed.includes('slab'));
+
+  // State for selected materials
+  const [selections, setSelections] = useState({
+    lb: lbMaterials[0]?.name || '',
+    part: partMaterials[0]?.name || '',
+    slab: slabMaterials[0]?.name || ''
+  });
+
+  // Helper to get price
+  const getPrice = (name) => materialsDb.find(m => m.name === name)?.unit_price || 0;
+
+  // Calculate individual costs
+  const lbCost = lbArea * getPrice(selections.lb);
+  const partCost = partArea * getPrice(selections.part);
+  const slabCost = slabArea * getPrice(selections.slab);
+  const totalCost = lbCost + partCost + slabCost;
+
+  return (
+    <div style={{ marginTop: '30px', borderTop: '2px solid #334155', paddingTop: '20px' }}>
+      <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#e2e8f0', marginBottom: '15px' }}>
+        <Calculator size={20} color="#34d399"/> Interactive Cost Estimator
+      </h3>
+      
+      <div style={{ backgroundColor: '#0f172a', padding: '20px', borderRadius: '8px', border: '1px solid #334155' }}>
+        
+        {/* Load Bearing Selection */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+          <div>
+            <div style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '0.9rem' }}>Load Bearing Walls ({lbArea.toFixed(1)} m²)</div>
+            <select 
+              value={selections.lb} 
+              onChange={(e) => setSelections({...selections, lb: e.target.value})}
+              style={{ backgroundColor: '#1e293b', color: 'white', border: '1px solid #334155', borderRadius: '4px', padding: '5px', marginTop: '5px', width: '200px' }}
+            >
+              {lbMaterials.map(m => <option key={m.name} value={m.name}>{m.name} (₹{m.unit_price}/m²)</option>)}
+            </select>
+          </div>
+          <div style={{ color: '#cbd5e1', fontWeight: 'bold' }}>₹{lbCost.toLocaleString('en-IN', {maximumFractionDigits: 0})}</div>
+        </div>
+
+        {/* Partition Selection */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+          <div>
+            <div style={{ color: '#22c55e', fontWeight: 'bold', fontSize: '0.9rem' }}>Partition Walls ({partArea.toFixed(1)} m²)</div>
+            <select 
+              value={selections.part} 
+              onChange={(e) => setSelections({...selections, part: e.target.value})}
+              style={{ backgroundColor: '#1e293b', color: 'white', border: '1px solid #334155', borderRadius: '4px', padding: '5px', marginTop: '5px', width: '200px' }}
+            >
+              {partMaterials.map(m => <option key={m.name} value={m.name}>{m.name} (₹{m.unit_price}/m²)</option>)}
+            </select>
+          </div>
+          <div style={{ color: '#cbd5e1', fontWeight: 'bold' }}>₹{partCost.toLocaleString('en-IN', {maximumFractionDigits: 0})}</div>
+        </div>
+
+        {/* Slab Selection */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', paddingBottom: '15px', borderBottom: '1px dashed #334155' }}>
+          <div>
+            <div style={{ color: '#38bdf8', fontWeight: 'bold', fontSize: '0.9rem' }}>Floor Slab ({slabArea.toFixed(1)} m²)</div>
+            <select 
+              value={selections.slab} 
+              onChange={(e) => setSelections({...selections, slab: e.target.value})}
+              style={{ backgroundColor: '#1e293b', color: 'white', border: '1px solid #334155', borderRadius: '4px', padding: '5px', marginTop: '5px', width: '200px' }}
+            >
+              {slabMaterials.map(m => <option key={m.name} value={m.name}>{m.name} (₹{m.unit_price}/m²)</option>)}
+            </select>
+          </div>
+          <div style={{ color: '#cbd5e1', fontWeight: 'bold' }}>₹{slabCost.toLocaleString('en-IN', {maximumFractionDigits: 0})}</div>
+        </div>
+
+        {/* Total Cost */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '1.2rem' }}>
+          <span style={{ color: 'white', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}><IndianRupee size={20}/> Estimated Material Cost</span>
+          <span style={{ color: '#34d399', fontWeight: 'bold' }}>₹{totalCost.toLocaleString('en-IN', {maximumFractionDigits: 0})}</span>
+        </div>
+        
+      </div>
+    </div>
+  );
+};
 
 // ==========================================
 // INTERACTIVE 2D COMPONENT (HIGH FIDELITY)
@@ -82,7 +186,6 @@ const FloorPlan2D = ({ geometry, activeWall, setActiveWall }) => {
         {walls.map((wall) => {
           const isActive = activeWall === wall.id;
           
-          // UPDATED: Set partition walls to Green (#22c55e) and Load-Bearing to Red
           let baseColor = wall.type === "load_bearing" ? "#ef4444" : "#22c55e";
           if (isActive) baseColor = "#38bdf8";
 
@@ -97,10 +200,8 @@ const FloorPlan2D = ({ geometry, activeWall, setActiveWall }) => {
         {/* Render High-Fidelity 2D Windows */}
         {windows.map((win) => (
           <g key={win.id} transform={`translate(${win.position.x}, ${win.position.z}) rotate(${-(win.rotation * 180) / Math.PI})`}>
-            {/* Wall Cutout End-caps */}
             <rect x={-win.length / 2} y={-0.1} width={0.1} height={0.2} fill="#38bdf8" />
             <rect x={win.length / 2 - 0.1} y={-0.1} width={0.1} height={0.2} fill="#38bdf8" />
-            {/* Architectural Glass Panes (Double Line) */}
             <line x1={-win.length / 2} y1={-0.03} x2={win.length / 2} y2={-0.03} stroke="#bae6fd" strokeWidth="0.02" />
             <line x1={-win.length / 2} y1={0.03} x2={win.length / 2} y2={0.03} stroke="#bae6fd" strokeWidth="0.02" />
           </g>
@@ -130,7 +231,6 @@ const FloorPlan3D = ({ geometry, activeWall, setActiveWall }) => {
         const isHovered = hoveredWall === wall.id;
         const isActive = activeWall === wall.id;
         
-        // UPDATED: Set partition walls to Green (#22c55e) and Load-Bearing to Red
         let baseColor = wall.type === "load_bearing" ? "#ef4444" : "#22c55e";
         if (isActive) baseColor = "#38bdf8";
         else if (isHovered) baseColor = "#60a5fa";
@@ -163,13 +263,10 @@ const FloorPlan3D = ({ geometry, activeWall, setActiveWall }) => {
       {/* High-Fidelity 3D Windows */}
       {windows.map((win) => (
         <group key={win.id} position={[win.position.x, 1.5, win.position.z]} rotation={[0, win.rotation, 0]}>
-          {/* Window Frame (Top, Bottom, Left, Right) */}
           <mesh position={[0, 1.2, 0]}><boxGeometry args={[win.length, 0.1, 0.22]}/><meshStandardMaterial color="#1e293b"/></mesh>
           <mesh position={[0, -1.2, 0]}><boxGeometry args={[win.length, 0.1, 0.22]}/><meshStandardMaterial color="#1e293b"/></mesh>
           <mesh position={[-win.length/2 + 0.05, 0, 0]}><boxGeometry args={[0.1, 2.5, 0.22]}/><meshStandardMaterial color="#1e293b"/></mesh>
           <mesh position={[win.length/2 - 0.05, 0, 0]}><boxGeometry args={[0.1, 2.5, 0.22]}/><meshStandardMaterial color="#1e293b"/></mesh>
-          
-          {/* Glass Pane */}
           <mesh position={[0, 0, 0]}>
             <boxGeometry args={[win.length - 0.1, 2.3, 0.05]} />
             <meshPhysicalMaterial color="#bae6fd" transparent opacity={0.4} roughness={0.05} transmission={0.95} thickness={0.5} />
@@ -177,7 +274,7 @@ const FloorPlan3D = ({ geometry, activeWall, setActiveWall }) => {
         </group>
       ))}
 
-      {/* High-Fidelity 3D Stairs (Treads + Risers) */}
+      {/* High-Fidelity 3D Stairs */}
       {stairs.map((stair) => {
         const numSteps = Math.max(5, stair.steps || 5);
         const stepHeight = 3 / numSteps;
@@ -190,12 +287,10 @@ const FloorPlan3D = ({ geometry, activeWall, setActiveWall }) => {
               const z = (i * stepDepth) - (stair.depth/2) + (stepDepth/2);
               return (
                 <group key={i}>
-                  {/* Vertical Riser */}
                   <mesh position={[0, y + stepHeight/2, z - stepDepth/2 + 0.02]} castShadow>
                     <boxGeometry args={[stair.width, stepHeight, 0.04]} />
                     <meshStandardMaterial color="#475569" />
                   </mesh>
-                  {/* Horizontal Tread (Overhangs slightly) */}
                   <mesh position={[0, y + stepHeight, z]} castShadow>
                     <boxGeometry args={[stair.width + 0.04, 0.05, stepDepth + 0.04]} />
                     <meshStandardMaterial color="#fb923c" />
@@ -249,7 +344,6 @@ const Workspace = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             <div>
               <h1 style={{ margin: 0, fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}><Box size={20} color="#3b82f6"/> BIM Reconstructor</h1>
-              {/* UPDATED LEGEND HERE */}
               <p style={{ margin: '5px 0 0 0', fontSize: '0.8rem', color: '#94a3b8' }}>Load-Bearing (Red) | Partition (Green) | Windows (Glass)</p>
             </div>
             
@@ -320,20 +414,25 @@ const Workspace = () => {
                 </div>
               </div>
 
-              <h3 style={{ fontSize: '0.9rem', color: '#94a3b8', marginBottom: '15px', textTransform: 'uppercase' }}>Stage 04: Material Optimization</h3>
-              {Object.entries(data.tradeoffs).map(([category, materials]) => (
-                <div key={category} style={{ marginBottom: '15px', padding: '15px', backgroundColor: '#0f172a', borderRadius: '8px', border: '1px solid #334155' }}>
-                  <h3 style={{ textTransform: 'capitalize', color: '#38bdf8', margin: '0 0 10px 0', fontSize: '1.1rem' }}>{category.replace('_', ' ')}</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {materials.map((mat, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: i !== materials.length - 1 ? '1px solid #1e293b' : 'none' }}>
-                        <span><strong>#{i+1}</strong> {mat.material}</span>
-                        <span style={{ color: '#86efac', fontWeight: 'bold' }}>{mat.score.toFixed(1)}</span>
-                      </div>
-                    ))}
+              {/* RENDER NEW COST CALCULATOR */}
+              <CostEstimator geometry={data.geometry} materialsDb={data.materials_db} />
+
+              <div style={{ marginTop: '30px', borderTop: '2px solid #334155', paddingTop: '20px' }}>
+                <h3 style={{ fontSize: '0.9rem', color: '#94a3b8', marginBottom: '15px', textTransform: 'uppercase' }}>Stage 04: Material Optimization</h3>
+                {Object.entries(data.tradeoffs).map(([category, materials]) => (
+                  <div key={category} style={{ marginBottom: '15px', padding: '15px', backgroundColor: '#0f172a', borderRadius: '8px', border: '1px solid #334155' }}>
+                    <h3 style={{ textTransform: 'capitalize', color: '#38bdf8', margin: '0 0 10px 0', fontSize: '1.1rem' }}>{category.replace('_', ' ')}</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {materials.map((mat, i) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: i !== materials.length - 1 ? '1px solid #1e293b' : 'none' }}>
+                          <span><strong>#{i+1}</strong> {mat.material}</span>
+                          <span style={{ color: '#86efac', fontWeight: 'bold' }}>{mat.score.toFixed(1)}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
 
               <div style={{ marginTop: '30px', borderTop: '2px solid #334155', paddingTop: '20px' }}>
                 <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#e2e8f0', marginBottom: '15px' }}><FileText size={20} color="#fca5a5"/> Stage 05: LLM Report</h3>
@@ -354,33 +453,35 @@ const Workspace = () => {
 // ==========================================
 const DatabasePage = () => (
   <div style={{ padding: '40px', maxWidth: '1000px', margin: '0 auto', color: '#e2e8f0', height: 'calc(100vh - 64px)', overflowY: 'auto' }}>
-    <h1 style={{ fontSize: '2.5rem', marginBottom: '10px', color: '#3b82f6', display: 'flex', alignItems: 'center', gap: '15px' }}><Database size={36}/> Starter Material Database</h1>
-    <p style={{ fontSize: '1.1rem', color: '#94a3b8', marginBottom: '30px' }}>The static data source feeding the deterministic tradeoff engine (Stage 04).</p>
+    <h1 style={{ fontSize: '2.5rem', marginBottom: '10px', color: '#3b82f6', display: 'flex', alignItems: 'center', gap: '15px' }}><Database size={36}/> Material Database & Costs</h1>
+    <p style={{ fontSize: '1.1rem', color: '#94a3b8', marginBottom: '30px' }}>The static data source feeding the deterministic tradeoff engine and cost calculator.</p>
     
     <div style={{ backgroundColor: '#1e293b', borderRadius: '12px', border: '1px solid #334155', overflow: 'hidden' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
         <thead style={{ backgroundColor: '#0f172a', color: '#38bdf8' }}>
           <tr>
             <th style={{ padding: '15px', borderBottom: '1px solid #334155' }}>Material</th>
-            <th style={{ padding: '15px', borderBottom: '1px solid #334155' }}>Cost Factor</th>
+            {/* UPDATED: Changed from USD to INR */}
+            <th style={{ padding: '15px', borderBottom: '1px solid #334155' }}>Est. Cost (INR/m²)</th>
             <th style={{ padding: '15px', borderBottom: '1px solid #334155' }}>Strength</th>
             <th style={{ padding: '15px', borderBottom: '1px solid #334155' }}>Durability</th>
             <th style={{ padding: '15px', borderBottom: '1px solid #334155' }}>Best Use</th>
           </tr>
         </thead>
         <tbody>
+          {/* UPDATED: Cost array values transformed to Indian Rupees (INR) */}
           {[
-            { m: "AAC Blocks", c: "Low (1)", s: "Medium (2)", d: "High (3)", u: "Partition walls" },
-            { m: "Red Brick", c: "Medium (2)", s: "High (3)", d: "Medium (2)", u: "Load-bearing walls" },
-            { m: "RCC", c: "High (3)", s: "Very High (4)", d: "Very High (4)", u: "Columns, slabs" },
-            { m: "Steel Frame", c: "High (3)", s: "Very High (4)", d: "Very High (4)", u: "Long spans (>5m)" },
-            { m: "Hollow Concrete", c: "Low-Med (1.5)", s: "Medium (2)", d: "Medium (2)", u: "Non-structural" },
-            { m: "Fly Ash Brick", c: "Low (1)", s: "Med-High (2.5)", d: "High (3)", u: "General walling" },
-            { m: "Precast Panel", c: "Med-High (2.5)", s: "High (3)", d: "Very High (4)", u: "Structural, slabs" }
+            { m: "AAC Blocks", p: "₹4,250", s: "Medium (2)", d: "High (3)", u: "Partition walls" },
+            { m: "Red Brick", p: "₹5,200", s: "High (3)", d: "Medium (2)", u: "Load-bearing walls" },
+            { m: "RCC", p: "₹11,350", s: "Very High (4)", d: "Very High (4)", u: "Columns, slabs" },
+            { m: "Steel Frame", p: "₹14,190", s: "Very High (4)", d: "Very High (4)", u: "Long spans (>5m)" },
+            { m: "Hollow Concrete", p: "₹3,780", s: "Medium (2)", d: "Medium (2)", u: "Non-structural" },
+            { m: "Fly Ash Brick", p: "₹3,310", s: "Med-High (2.5)", d: "High (3)", u: "General walling" },
+            { m: "Precast Panel", p: "₹8,510", s: "High (3)", d: "Very High (4)", u: "Structural, slabs" }
           ].map((row, i) => (
             <tr key={i} style={{ backgroundColor: i % 2 === 0 ? '#1e293b' : '#0f172a' }}>
               <td style={{ padding: '15px', borderBottom: '1px solid #334155', fontWeight: 'bold' }}>{row.m}</td>
-              <td style={{ padding: '15px', borderBottom: '1px solid #334155', color: '#fca5a5' }}>{row.c}</td>
+              <td style={{ padding: '15px', borderBottom: '1px solid #334155', color: '#34d399', fontWeight: 'bold' }}>{row.p}</td>
               <td style={{ padding: '15px', borderBottom: '1px solid #334155', color: '#86efac' }}>{row.s}</td>
               <td style={{ padding: '15px', borderBottom: '1px solid #334155', color: '#93c5fd' }}>{row.d}</td>
               <td style={{ padding: '15px', borderBottom: '1px solid #334155', color: '#cbd5e1' }}>{row.u}</td>
@@ -405,7 +506,7 @@ const AboutPage = () => (
         { step: "01", title: "Floor Plan Parsing", desc: "OpenCV extracts orthogonal geometry. Gemini 2.5 Flash acts as a multimodal OCR agent to extract room names." },
         { step: "02", title: "Geometry Reconstruction", desc: "Shapely bounds classification determines Load-Bearing (outer perimeter) vs Partition (internal)." },
         { step: "03", title: "3D Model Generation", desc: "React Three Fiber dynamically extrudes lines to 3m heights and generates the slab." },
-        { step: "04", title: "Tradeoff Logic", desc: "A deterministic algorithm ranks materials via weighted physics formulas." },
+        { step: "04", title: "Tradeoff Logic & Cost Analysis", desc: "A deterministic algorithm ranks materials via weighted physics formulas, while a React module computes real-time cost estimations based on geometric surface area." },
         { step: "05", title: "Explainability", desc: "Gemini 2.5 Flash translates the mathematical outputs into plain-language engineering justifications." }
       ].map(s => (
         <div key={s.step} style={{ display: 'flex', gap: '20px', padding: '20px', backgroundColor: '#1e293b', borderRadius: '8px', border: '1px solid #334155' }}>
