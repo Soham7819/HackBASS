@@ -503,11 +503,11 @@ const AboutPage = () => (
     
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {[
-        { step: "01", title: "Floor Plan Parsing", desc: "OpenCV extracts orthogonal geometry. Gemini 2.5 Flash acts as a multimodal OCR agent to extract room names." },
+        { step: "01", title: "Floor Plan Parsing", desc: "OpenCV extracts orthogonal geometry. Groq AI acts as a multimodal OCR agent to extract room names." },
         { step: "02", title: "Geometry Reconstruction", desc: "Shapely bounds classification determines Load-Bearing (outer perimeter) vs Partition (internal)." },
         { step: "03", title: "3D Model Generation", desc: "React Three Fiber dynamically extrudes lines to 3m heights and generates the slab." },
         { step: "04", title: "Tradeoff Logic & Cost Analysis", desc: "A deterministic algorithm ranks materials via weighted physics formulas, while a React module computes real-time cost estimations based on geometric surface area." },
-        { step: "05", title: "Explainability", desc: "Gemini 2.5 Flash translates the mathematical outputs into plain-language engineering justifications." }
+        { step: "05", title: "Explainability", desc: "Groq AI translates the mathematical outputs into plain-language engineering justifications." }
       ].map(s => (
         <div key={s.step} style={{ display: 'flex', gap: '20px', padding: '20px', backgroundColor: '#1e293b', borderRadius: '8px', border: '1px solid #334155' }}>
           <h2 style={{ color: '#38bdf8', fontSize: '2rem', margin: 0 }}>{s.step}</h2>
