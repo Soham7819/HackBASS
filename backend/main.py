@@ -24,14 +24,15 @@ app.add_middleware(
 
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
+# UPDATED: 'unit_price' converted from USD to INR (estimated per square meter)
 MATERIAL_DB = [
-    {"name": "AAC Blocks", "cost": 1, "strength": 2, "durability": 3, "allowed": ["partition"]},
-    {"name": "Red Brick", "cost": 2, "strength": 3, "durability": 2, "allowed": ["load_bearing"]},
-    {"name": "RCC", "cost": 3, "strength": 4, "durability": 4, "allowed": ["load_bearing", "slab", "column"]},
-    {"name": "Steel Frame", "cost": 3, "strength": 4, "durability": 4, "allowed": ["load_bearing", "window_frames"]}, 
-    {"name": "Hollow Concrete Block", "cost": 1.5, "strength": 2, "durability": 2, "allowed": ["partition"]},
-    {"name": "Fly Ash Brick", "cost": 1, "strength": 2.5, "durability": 3, "allowed": ["partition", "load_bearing"]},
-    {"name": "Precast Concrete Panel", "cost": 2.5, "strength": 3, "durability": 4, "allowed": ["load_bearing", "slab"]}
+    {"name": "AAC Blocks", "cost": 1, "unit_price": 4250, "strength": 2, "durability": 3, "allowed": ["partition"]},
+    {"name": "Red Brick", "cost": 2, "unit_price": 5200, "strength": 3, "durability": 2, "allowed": ["load_bearing"]},
+    {"name": "RCC", "cost": 3, "unit_price": 11350, "strength": 4, "durability": 4, "allowed": ["load_bearing", "slab", "column"]},
+    {"name": "Steel Frame", "cost": 3, "unit_price": 14190, "strength": 4, "durability": 4, "allowed": ["load_bearing", "window_frames"]}, 
+    {"name": "Hollow Concrete Block", "cost": 1.5, "unit_price": 3780, "strength": 2, "durability": 2, "allowed": ["partition"]},
+    {"name": "Fly Ash Brick", "cost": 1, "unit_price": 3310, "strength": 2.5, "durability": 3, "allowed": ["partition", "load_bearing"]},
+    {"name": "Precast Concrete Panel", "cost": 2.5, "unit_price": 8510, "strength": 3, "durability": 4, "allowed": ["load_bearing", "slab"]}
 ]
 
 def extract_text_from_image(image_bytes: bytes):
@@ -54,50 +55,36 @@ def extract_text_from_image(image_bytes: bytes):
     except Exception as e:
         return f"Groq OCR Vision extraction failed: {str(e)}"
 
-# ==========================================
-# WINDOW EXTRACTION (Stairs Removed)
-# ==========================================
 def detect_windows(walls):
     windows = []
-    
-    # WINDOW DETECTION (Tolerant Gap Finding)
     for i, w1 in enumerate(walls):
         for j, w2 in enumerate(walls):
             if i >= j: continue
             
-            # Walls must have roughly the same rotation
             if abs(w1["rotation"] - w2["rotation"]) < 0.1:
                 is_horiz = abs(w1["rotation"]) < 0.1 or abs(w1["rotation"] - math.pi) < 0.1
                 is_vert = abs(abs(w1["rotation"]) - math.pi/2) < 0.1
 
                 if is_horiz:
-                    # Check if they lie on the same Z axis (allow 0.5m wiggle room)
                     if abs(w1["position"]["z"] - w2["position"]["z"]) < 0.5:
                         gap = abs(w1["position"]["x"] - w2["position"]["x"]) - (w1["length"]/2 + w2["length"]/2)
-                        # Valid window sizes are usually between 0.5m and 3m
                         if 0.5 < gap < 3.0: 
                             center_x = (w1["position"]["x"] + w2["position"]["x"]) / 2
                             windows.append({
-                                "id": f"win_{len(windows)}",
-                                "length": gap,
-                                "position": {"x": center_x, "y": 1.5, "z": w1["position"]["z"]},
-                                "rotation": w1["rotation"]
+                                "id": f"win_{len(windows)}", "length": gap,
+                                "position": {"x": center_x, "y": 1.5, "z": w1["position"]["z"]}, "rotation": w1["rotation"]
                             })
                             
                 elif is_vert:
-                    # Check if they lie on the same X axis
                     if abs(w1["position"]["x"] - w2["position"]["x"]) < 0.5:
                         gap = abs(w1["position"]["z"] - w2["position"]["z"]) - (w1["length"]/2 + w2["length"]/2)
                         if 0.5 < gap < 3.0:
                             center_z = (w1["position"]["z"] + w2["position"]["z"]) / 2
                             windows.append({
-                                "id": f"win_{len(windows)}",
-                                "length": gap,
-                                "position": {"x": w1["position"]["x"], "y": 1.5, "z": center_z},
-                                "rotation": w1["rotation"]
+                                "id": f"win_{len(windows)}", "length": gap,
+                                "position": {"x": w1["position"]["x"], "y": 1.5, "z": center_z}, "rotation": w1["rotation"]
                             })
 
-    # Deduplicate windows that might overlap due to tolerant grouping
     unique_windows = []
     for w in windows:
         is_duplicate = any(math.hypot(w["position"]["x"] - ew["position"]["x"], w["position"]["z"] - ew["position"]["z"]) < 0.5 for ew in unique_windows)
@@ -153,8 +140,6 @@ def process_floorplan(image_bytes: bytes):
         })
         
     slab = {"width": (max_x - min_x) * scale, "depth": (max_y - min_y) * scale}
-    
-    # Only detect windows now
     windows = detect_windows(walls)
         
     return walls, slab, windows, max_span
@@ -197,7 +182,6 @@ async def process_blueprint(file: UploadFile = File(...)):
     image_bytes = await file.read()
     ocr_text = extract_text_from_image(image_bytes)
     
-    # Stairs removed from unpacking
     walls, slab, windows, max_span = process_floorplan(image_bytes)
     
     tradeoffs = {
@@ -216,7 +200,8 @@ async def process_blueprint(file: UploadFile = File(...)):
         "max_span": max_span,
         "ocr_text": ocr_text,
         "tradeoffs": tradeoffs, 
-        "explainability": explainability
+        "explainability": explainability,
+        "materials_db": MATERIAL_DB 
     }
 
 if __name__ == "__main__":
