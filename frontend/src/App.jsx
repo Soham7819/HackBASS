@@ -81,7 +81,9 @@ const FloorPlan2D = ({ geometry, activeWall, setActiveWall }) => {
         {/* Render Walls */}
         {walls.map((wall) => {
           const isActive = activeWall === wall.id;
-          let baseColor = wall.type === "load_bearing" ? "#ef4444" : "#94a3b8";
+          
+          // UPDATED: Set partition walls to Green (#22c55e) and Load-Bearing to Red
+          let baseColor = wall.type === "load_bearing" ? "#ef4444" : "#22c55e";
           if (isActive) baseColor = "#38bdf8";
 
           return (
@@ -128,7 +130,8 @@ const FloorPlan3D = ({ geometry, activeWall, setActiveWall }) => {
         const isHovered = hoveredWall === wall.id;
         const isActive = activeWall === wall.id;
         
-        let baseColor = wall.type === "load_bearing" ? "#ef4444" : "#94a3b8";
+        // UPDATED: Set partition walls to Green (#22c55e) and Load-Bearing to Red
+        let baseColor = wall.type === "load_bearing" ? "#ef4444" : "#22c55e";
         if (isActive) baseColor = "#38bdf8";
         else if (isHovered) baseColor = "#60a5fa";
 
@@ -246,7 +249,8 @@ const Workspace = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             <div>
               <h1 style={{ margin: 0, fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}><Box size={20} color="#3b82f6"/> BIM Reconstructor</h1>
-              <p style={{ margin: '5px 0 0 0', fontSize: '0.8rem', color: '#94a3b8' }}>Load-Bearing (Red) | Windows (Glass)</p>
+              {/* UPDATED LEGEND HERE */}
+              <p style={{ margin: '5px 0 0 0', fontSize: '0.8rem', color: '#94a3b8' }}>Load-Bearing (Red) | Partition (Green) | Windows (Glass)</p>
             </div>
             
             {data && (
@@ -398,11 +402,11 @@ const AboutPage = () => (
     
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {[
-        { step: "01", title: "Floor Plan Parsing", desc: "OpenCV extracts orthogonal geometry. Groq AI acts as a multimodal OCR agent to extract room names." },
+        { step: "01", title: "Floor Plan Parsing", desc: "OpenCV extracts orthogonal geometry. Gemini 2.5 Flash acts as a multimodal OCR agent to extract room names." },
         { step: "02", title: "Geometry Reconstruction", desc: "Shapely bounds classification determines Load-Bearing (outer perimeter) vs Partition (internal)." },
         { step: "03", title: "3D Model Generation", desc: "React Three Fiber dynamically extrudes lines to 3m heights and generates the slab." },
         { step: "04", title: "Tradeoff Logic", desc: "A deterministic algorithm ranks materials via weighted physics formulas." },
-        { step: "05", title: "Explainability", desc: "Groq AI translates the mathematical outputs into plain-language engineering justifications." }
+        { step: "05", title: "Explainability", desc: "Gemini 2.5 Flash translates the mathematical outputs into plain-language engineering justifications." }
       ].map(s => (
         <div key={s.step} style={{ display: 'flex', gap: '20px', padding: '20px', backgroundColor: '#1e293b', borderRadius: '8px', border: '1px solid #334155' }}>
           <h2 style={{ color: '#38bdf8', fontSize: '2rem', margin: 0 }}>{s.step}</h2>
